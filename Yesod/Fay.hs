@@ -29,9 +29,11 @@
 --   to your library section.
 --
 -- * Create the module @SharedTypes@ in @fay-shared@ and create a @Command@
---   datatype. For an example of what this file should look like, see <FIXME>.
+--   datatype. For an example of what this file should look like, see
+--   <https://github.com/snoyberg/yesod-fay/blob/master/sample/fay-shared/SharedTypes.hs>.
 --
--- * Add the function @fayFile@ to your @Import@ module. See <FIXME> for an
+-- * Add the function @fayFile@ to your @Import@ module. See
+--   <https://github.com/snoyberg/yesod-fay/blob/master/sample/Import.hs> for an
 --   example.
 --
 -- * Import the @SharedTypes@ and @Yesod.Fay@ modules into your @Foundation.hs@
@@ -45,7 +47,8 @@
 --   runCommandHandler $ \render command -> case command of ...@.
 --
 -- * In order to use Fay, add @$(fayFile "MyModule")@ to a widget, and then
---   write the corresponding @fay/MyModule.hs@ file. For an example, see <FIXME>.
+--   write the corresponding @fay/MyModule.hs@ file. For an example, see
+--   <https://github.com/snoyberg/yesod-fay/blob/master/sample/fay/Home.hs>.
 module Yesod.Fay
     ( -- * Typeclass
       YesodFay (..)
