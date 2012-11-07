@@ -15,7 +15,7 @@
 -- containing client-side code, and @fay-shared@ containing code to be used by
 -- both the client and server.
 --
--- The @Language.Fay.Yesod@ module (part of this package, but not exposed) is
+-- The @Language.Fay.Yesod@ module (part of this package) is
 -- required by both client and server code. However, since Fay does not
 -- currently have package management support, we use a bit of a hack: the TH
 -- calls in this package will automatically create the necessary
