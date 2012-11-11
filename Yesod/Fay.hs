@@ -87,7 +87,8 @@ import           Language.Fay.Compiler      (compileFile)
 import           Language.Fay.Convert       (readFromFay, showToFay)
 import           Language.Fay.FFI           (Foreign)
 import           Language.Fay.Types         (CompileConfig,
-                                             configDirectoryIncludes)
+                                             configDirectoryIncludes,
+                                             configTypecheck)
 import           Language.Fay.Yesod         (Returns (Returns))
 import           Language.Haskell.TH.Syntax (Exp (LitE), Lit (StringL),
                                              Pred (ClassP), Q, Type (VarT),
@@ -251,7 +252,7 @@ fayFileReload :: FayFile
 fayFileReload name = do
   qRunIO writeYesodFay
   [|
-    liftIO (compileFile config $ mkfp name) >>= \eres ->
+    liftIO (compileFile config { configTypecheck = False } $ mkfp name) >>= \eres ->
     (case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
         Right s -> requireJQuery >> toWidget (const $ Javascript $ fromText $ pack s))|]
