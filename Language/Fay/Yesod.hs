@@ -25,10 +25,4 @@ ajaxCommand :: (Foreign a, Foreign command)
             => command
             -> (a -> Fay ())
             -> Fay ()
-ajaxCommand = ffi "jQuery['ajax']({\
-                  \ \"url\": window['yesodFayCommandPath'], \
-                  \ \"type\": 'POST', \
-                  \ \"data\": { \"json\": JSON.stringify(%1) }, \
-                  \ \"dataType\": 'json', \
-                  \ \"success\" : %2 \
-                  \})"
+ajaxCommand = ffi "jQuery['ajax']({ url: window['yesodFayCommandPath'], type: 'POST', data: { json: JSON.stringify(%1) }, dataType: 'json', success : %2})"
