@@ -215,7 +215,7 @@ requireJQuery = do
     addScriptEither $ urlJqueryJs master
     render <- lift getUrlRender
     -- FIXME get rid of toLazyText call below
-    toWidget [julius|window.yesodFayCommandPath = #{toLazyText $ fromValue $ toJSON $ render $ fayRoute FayCommandR};|]
+    toWidget [julius|window.yesodFayCommandPath = #{toJSON $ render $ fayRoute FayCommandR};|]
 
 mkfp :: String -> FilePath
 mkfp name = "fay/" ++ name ++ ".hs"
