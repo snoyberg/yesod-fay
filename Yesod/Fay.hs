@@ -235,10 +235,6 @@ type FayFile = String -> Q Exp
 fayFileProd :: FayFile
 fayFileProd name = do
     qAddDependentFile fp
-    ec <- qRunIO $ do
-        writeYesodFay
-        rawSystem "ghc" ["-O0", "--make", "-ifay", "-ifay-shared", fp]
-    unless (ec == ExitSuccess) $ error $ "Type checking of fay module failed: " ++ name
     eres <- qRunIO $ compileFile config fp
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
