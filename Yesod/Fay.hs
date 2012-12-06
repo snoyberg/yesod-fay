@@ -79,10 +79,10 @@ import           Data.Aeson.Encode          (fromValue)
 import qualified Data.ByteString.Lazy       as L
 import           Data.Data                  (Data)
 import           Data.Default               (def)
-import           Data.Text                  (pack)
+import           Data.Text                  (pack, unpack)
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Text.Lazy.Builder     (fromText, toLazyText)
-import           Filesystem                 (createTree)
+import           Filesystem                 (createTree, isFile, readTextFile)
 import           Filesystem.Path.CurrentOS  (directory, encodeString)
 #if MIN_VERSION_fay(0,10,0)
 import           Language.Fay               (compileFile)
@@ -206,13 +206,20 @@ postFayCommandR =
         go Returns = jsonToRepJson . showToFay
 
 langYesodFay :: String
-langYesodFay = $(qRunIO $ fmap (LitE . StringL) $ readFile "Language/Fay/Yesod.hs")
+langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack) $ readTextFile "Language/Fay/Yesod.hs")
 
 writeYesodFay :: IO ()
 writeYesodFay = do
     let fp = "fay/Language/Fay/Yesod.hs"
-    createTree $ directory fp
-    writeFile (encodeString fp) langYesodFay
+        content = "-- NOTE: This file is auto-generated.\n" ++ langYesodFay
+    exists <- isFile fp
+    mcurrent <-
+        if exists
+            then fmap (Just . unpack) $ readTextFile fp
+            else return Nothing
+    unless (mcurrent == Just content) $ do
+        createTree $ directory fp
+        writeFile (encodeString fp) content
 
 requireJQuery :: YesodFay master => GWidget sub master ()
 requireJQuery = do
@@ -235,6 +242,7 @@ type FayFile = String -> Q Exp
 fayFileProd :: FayFile
 fayFileProd name = do
     qAddDependentFile fp
+    qRunIO writeYesodFay
     eres <- qRunIO $ compileFile config fp
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
