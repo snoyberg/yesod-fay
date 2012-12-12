@@ -93,6 +93,7 @@ import           Language.Fay.Convert       (readFromFay, showToFay)
 import           Language.Fay.FFI           (Foreign)
 import           Language.Fay.Types         (CompileConfig,
                                              configDirectoryIncludes,
+                                             addConfigDirectoryIncludes,
                                              configTypecheck)
 import           Language.Fay.Yesod         (Returns (Returns))
 import           Language.Haskell.TH.Syntax (Exp (LitE), Lit (StringL),
@@ -251,9 +252,7 @@ fayFileProd name = do
     fp = mkfp name
 
 config :: CompileConfig
-config = def
-    { configDirectoryIncludes = ["fay", "fay-shared"]
-    }
+config = addConfigDirectoryIncludes ["fay", "fay-shared"] def
 
 -- | Performs no type checking on the Fay code. Each time the widget is
 -- requested, the Fay code will be compiled from scratch to Javascript.
