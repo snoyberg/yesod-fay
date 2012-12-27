@@ -110,6 +110,7 @@ import           Yesod.Core                 (GHandler, GWidget,
                                              mkYesodSub, parseRoutes,
                                              toMasterHandler, toWidget)
 import           Yesod.Form.Jquery          (YesodJquery (..))
+import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
 
 -- | Type class for applications using Fay.
@@ -198,7 +199,7 @@ postFayCommandR =
     runCommandHandler f = do
         mtxt <- lookupPostParam "json"
         case mtxt of
-            Nothing -> error "No JSON provided"
+            Nothing -> invalidArgs ["No JSON provided"]
             Just txt ->
                 case decode (L.fromChunks [encodeUtf8 txt]) >>= readFromFay of
                     Nothing -> error $ "Unable to parse input: " ++ show txt
