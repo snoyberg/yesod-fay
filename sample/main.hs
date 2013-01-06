@@ -34,7 +34,7 @@ instance YesodFay App where
 
     yesodFayCommand render command =
         case command of
-            RollDie r -> render r 4 -- guaranteed to be random, see http://xkcd.com/221/
+            RollDie r -> render r "Four" -- guaranteed to be random, see http://xkcd.com/221/
 
     fayRoute = FaySiteR
 

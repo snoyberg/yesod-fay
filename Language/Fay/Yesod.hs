@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoImplicitPrelude  #-}
+{-# LANGUAGE CPP                #-}
 -- | Module to be shared between server and client.
 --
 -- This module must be valid for both GHC and Fay.
@@ -7,6 +8,32 @@ module Language.Fay.Yesod where
 
 import           Language.Fay.FFI
 import           Language.Fay.Prelude
+
+#ifdef FAY
+
+data Text = Text
+instance Foreign Text
+
+fromString :: String -> Text
+fromString = ffi "%1"
+
+toString :: Text -> String
+toString = ffi "%1"
+
+#else
+
+import qualified Data.Text as T
+
+type Text = T.Text
+instance Foreign T.Text
+
+fromString :: String -> Text
+fromString = T.pack
+
+toString :: Text -> String
+toString = T.unpack
+
+#endif
 
 -- | A proxy type for specifying what type a command should return. The final
 -- field for each data constructor in a command datatype should be @Returns@.

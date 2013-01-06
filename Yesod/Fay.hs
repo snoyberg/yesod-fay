@@ -79,6 +79,7 @@ import qualified Data.ByteString.Lazy       as L
 import           Data.Data                  (Data)
 import           Data.Default               (def)
 import           Data.Text                  (pack, unpack)
+import qualified Data.Text                  as T
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Text.Lazy.Builder     (fromText, toLazyText)
 import           Filesystem                 (createTree, isFile, readTextFile)
@@ -104,6 +105,7 @@ import           Yesod.Core                 (GHandler, GWidget,
                                              getYesod, lift, lookupPostParam,
                                              mkYesodSub, parseRoutes,
                                              toMasterHandler, toWidget)
+import           Yesod.Fay.Internal         (removeCPP)
 import           Yesod.Form.Jquery          (YesodJquery (..))
 import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
@@ -203,7 +205,7 @@ postFayCommandR =
         go Returns = jsonToRepJson . showToFay
 
 langYesodFay :: String
-langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack) $ readTextFile "Language/Fay/Yesod.hs")
+langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack . removeCPP) $ readTextFile "Language/Fay/Yesod.hs")
 
 writeYesodFay :: IO ()
 writeYesodFay = do

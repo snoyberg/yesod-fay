@@ -9,6 +9,7 @@ module Language.Fay.JQuery  where
 
 import Language.Fay.Prelude
 import Language.Fay.FFI
+import Language.Fay.Yesod
 
 data JQuery
 instance Foreign JQuery
@@ -27,5 +28,5 @@ select = ffi "window['jQuery'](%1)"
 onClick :: (EventObject -> Fay Bool) -> JQuery -> Fay JQuery
 onClick = ffi "%2['click'](%1)"
 
-alert :: String -> Fay ()
+alert :: Text -> Fay ()
 alert = ffi "window.alert(%1)"
