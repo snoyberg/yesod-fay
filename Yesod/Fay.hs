@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -84,11 +83,7 @@ import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Text.Lazy.Builder     (fromText, toLazyText)
 import           Filesystem                 (createTree, isFile, readTextFile)
 import           Filesystem.Path.CurrentOS  (directory, encodeString)
-#if MIN_VERSION_fay(0,10,0)
 import           Language.Fay               (compileFile)
-#else
-import           Language.Fay.Compiler      (compileFile)
-#endif
 import           Language.Fay.Convert       (readFromFay, showToFay)
 import           Language.Fay.FFI           (Foreign)
 import           Language.Fay.Types         (CompileConfig,
