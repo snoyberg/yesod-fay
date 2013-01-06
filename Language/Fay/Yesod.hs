@@ -30,14 +30,14 @@ callWithErrorHandling f g h = ajaxCommandWithErrorHandling (f Returns) g h
 
 -- | Run the AJAX command.
 ajaxCommand :: (Foreign a, Foreign command)
-            => command
+            => Automatic command
             -> (a -> Fay ()) -- ^ Success Handler
             -> Fay ()
 ajaxCommand = ffi "jQuery['ajax']({ url: window['yesodFayCommandPath'], type: 'POST', data: { json: JSON.stringify(%1) }, dataType: 'json', success : %2})"
 
 -- | Run the AJAX command, handling errors as well
 ajaxCommandWithErrorHandling :: (Foreign a, Foreign command)
-            => command
+            => Automatic command
             -> (a -> Fay ()) -- ^ Success Handler
             -> (Fay ())      -- ^ Failure Handler
             -> Fay ()
