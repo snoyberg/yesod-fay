@@ -7,4 +7,4 @@ import Language.Fay.JQuery
 import SharedTypes
 
 main :: Fay ()
-main = void $ select "#roll" >>= onClick (const $ call RollDie (alert . show) >> return False)
+main = void $ select "#roll" >>= onClick (const $ call RollDie alert >> return False)

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -77,13 +76,14 @@ module Yesod.Fay
 import           Control.Applicative        ((<$>))
 import           Control.Monad              (unless, when)
 import           Control.Monad.IO.Class     (liftIO)
-import           Data.Aeson                 (decode, toJSON)
+import           Data.Aeson                 (decode, toJSON, Value)
 import           Data.Aeson.Encode          (fromValue)
 import qualified Data.ByteString.Lazy       as L
 import           Data.Data                  (Data)
 import           Data.Default               (def)
 import           Data.Maybe                 (isNothing)
 import           Data.Text                  (pack, unpack)
+import qualified Data.Text                  as T
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Text.Lazy.Builder     (fromText, toLazyText)
 import           Filesystem                 (createTree, isFile, readTextFile)
@@ -111,6 +111,7 @@ import           Yesod.Core                 (GHandler, GWidget,
                                              getYesod, lift, lookupPostParam,
                                              mkYesodSub, parseRoutes,
                                              toMasterHandler, toWidget)
+import           Yesod.Fay.Internal         (removeCPP)
 import           Yesod.Form.Jquery          (YesodJquery (..))
 import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
@@ -122,20 +123,7 @@ import           Yesod.Static
 -- for making Ajax calls. We have an associated type stating the command
 -- datatype. Since this datatype must be used by both the client and server,
 -- you should place its definition in the @fay-shared@ folder.
-class ( Data (YesodFayCommand master)
-      , Read (YesodFayCommand master)
-      , Foreign (YesodFayCommand master)
-      , YesodJquery master
-      )
-  => YesodFay master where
-    -- | The command type. This type must be shared between client and server
-    -- code, and should therefore be placed somewhere in @fay-shared@. The last
-    -- field for each data constructor must be of type @Returns@, with a type
-    -- parameter specify the actual return type. For example:
-    --
-    -- > data Command = GetFib Int (Returns Int)
-    type YesodFayCommand master
-
+class YesodJquery master => YesodFay master where
     -- | User-defined function specifying how to respond to commands. Using the
     -- above datatype, this might look like:
     --
@@ -170,7 +158,7 @@ class ( Data (YesodFayCommand master)
 type CommandHandler sub master
     = forall s.
       (forall a. Show a => Returns a -> a -> GHandler sub master s)
-   -> YesodFayCommand master
+   -> Value
    -> GHandler sub master s
 
 -- | A setttings data type for indicating whether the generated Javascript
@@ -216,14 +204,14 @@ postFayCommandR =
         case mtxt of
             Nothing -> invalidArgs ["No JSON provided"]
             Just txt ->
-                case decode (L.fromChunks [encodeUtf8 txt]) >>= readFromFay of
+                case decode (L.fromChunks [encodeUtf8 txt]) of
                     Nothing -> error $ "Unable to parse input: " ++ show txt
                     Just cmd -> f go cmd
       where
         go Returns = jsonToRepJson . showToFay
 
 langYesodFay :: String
-langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack) $ readTextFile "Language/Fay/Yesod.hs")
+langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack . removeCPP) $ readTextFile "Language/Fay/Yesod.hs")
 
 writeYesodFay :: IO ()
 writeYesodFay = do

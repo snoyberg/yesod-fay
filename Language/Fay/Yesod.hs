@@ -10,6 +10,33 @@ import           Language.Fay.FFI
 import           Prelude
 import           Data.Data
 
+#ifdef FAY
+
+data Text = Text
+    deriving (Show, Read, Eq, Typeable, Data)
+instance Foreign Text
+
+fromString :: String -> Text
+fromString = ffi "%1"
+
+toString :: Text -> String
+toString = ffi "%1"
+
+#else
+
+import qualified Data.Text as T
+
+type Text = T.Text
+instance Foreign T.Text
+
+fromString :: String -> Text
+fromString = T.pack
+
+toString :: Text -> String
+toString = T.unpack
+
+#endif
+
 -- | A proxy type for specifying what type a command should return. The final
 -- field for each data constructor in a command datatype should be @Returns@.
 data Returns a = Returns
