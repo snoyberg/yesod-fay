@@ -6,7 +6,7 @@
 -- This module must be valid for both GHC and Fay.
 module Language.Fay.Yesod where
 
-import           Language.Fay.FFI
+import           FFI
 import           Prelude
 import           Data.Data
 
@@ -43,30 +43,28 @@ data Returns a = Returns
     deriving (Show, Read, Data, Typeable)
 
 -- | Call a command.
-call :: (Foreign a, Foreign command)
-     => (Returns a -> command)
+call :: (Returns a -> command)
      -> (a -> Fay ()) -- ^ Success Handler
      -> Fay ()
 call f g = ajaxCommand (f Returns) g
 
 -- ! Call a command, handling errors as well
-callWithErrorHandling :: (Foreign a, Foreign command)
-     => (Returns a -> command)
+callWithErrorHandling
+     :: (Returns a -> command)
      -> (a -> Fay ()) -- ^ Success Handler
      -> (Fay ())      -- ^ Failure Handler
      -> Fay ()
 callWithErrorHandling f g h = ajaxCommandWithErrorHandling (f Returns) g h
 
 -- | Run the AJAX command.
-ajaxCommand :: (Foreign a, Foreign command)
-            => Automatic command
+ajaxCommand :: Automatic command
             -> (a -> Fay ()) -- ^ Success Handler
             -> Fay ()
 ajaxCommand = ffi "jQuery['ajax']({ url: window['yesodFayCommandPath'], type: 'POST', data: { json: JSON.stringify(%1) }, dataType: 'json', success : %2})"
 
 -- | Run the AJAX command, handling errors as well
-ajaxCommandWithErrorHandling :: (Foreign a, Foreign command)
-            => Automatic command
+ajaxCommandWithErrorHandling
+            :: Automatic command
             -> (a -> Fay ()) -- ^ Success Handler
             -> (Fay ())      -- ^ Failure Handler
             -> Fay ()
