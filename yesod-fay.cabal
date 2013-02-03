@@ -23,6 +23,7 @@ library
                      , aeson >= 0.6
                      , bytestring >= 0.9
                      , data-default >= 0.4
+                     , directory >= 1.1.0.2
                      , text >= 0.11
                      , system-fileio >= 0.3
                      , system-filepath >= 0.4
@@ -32,3 +33,4 @@ library
                      , yesod-core >= 1.1
                      , yesod-form >= 1.1
                      , yesod-json >= 1.1
+                     , yesod-static >= 1.1.1.2

@@ -1,12 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoImplicitPrelude  #-}
+{-# LANGUAGE CPP                #-}
 -- | Module to be shared between server and client.
 --
 -- This module must be valid for both GHC and Fay.
 module Language.Fay.Yesod where
 
 import           Language.Fay.FFI
-import           Language.Fay.Prelude
+import           Prelude
+import           Data.Data
 
 -- | A proxy type for specifying what type a command should return. The final
 -- field for each data constructor in a command datatype should be @Returns@.

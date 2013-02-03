@@ -13,6 +13,8 @@ development = True
 #endif
 
 fayFile :: FayFile
-fayFile
-    | development = fayFileReload
-    | otherwise   = fayFileProd
+fayFile moduleName
+    | development = fayFileReload settings
+    | otherwise   = fayFileProd settings
+  where
+    settings = yesodFaySettings moduleName

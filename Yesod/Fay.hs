@@ -58,6 +58,8 @@
 module Yesod.Fay
     ( -- * Typeclass
       YesodFay (..)
+    , YesodFaySettings (..)
+    , yesodFaySettings
       -- * Include Fay programs
     , fayFileProd
     , fayFileReload
@@ -72,35 +74,39 @@ module Yesod.Fay
     , YesodJquery (..)
     ) where
 
-import           Control.Monad              (unless)
+import           Control.Applicative        ((<$>))
+import           Control.Monad              (unless, when)
 import           Control.Monad.IO.Class     (liftIO)
 import           Data.Aeson                 (decode, toJSON)
 import           Data.Aeson.Encode          (fromValue)
 import qualified Data.ByteString.Lazy       as L
 import           Data.Data                  (Data)
 import           Data.Default               (def)
+import           Data.Maybe                 (isNothing)
 import           Data.Text                  (pack, unpack)
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Text.Lazy.Builder     (fromText, toLazyText)
 import           Filesystem                 (createTree, isFile, readTextFile)
-import           Filesystem.Path.CurrentOS  (directory, encodeString)
-import           Language.Fay               (compileFile)
+import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>))
+import           Language.Fay               (compileFile, getRuntime)
 import           Language.Fay.Convert       (readFromFay, showToFay)
 import           Language.Fay.FFI           (Foreign)
 import           Language.Fay.Types         (CompileConfig,
                                              configDirectoryIncludes,
                                              addConfigDirectoryIncludes,
-                                             configTypecheck)
+                                             configTypecheck,
+                                             configExportRuntime)
 import           Language.Fay.Yesod         (Returns (Returns))
 import           Language.Haskell.TH.Syntax (Exp (LitE), Lit (StringL),
                                              Pred (ClassP), Q, Type (VarT),
                                              mkName, qAddDependentFile, qRunIO)
+import           System.Directory           (copyFile)
 import           System.Exit                (ExitCode (ExitSuccess))
 import           System.Process             (rawSystem)
 import           Text.Julius                (Javascript (Javascript), julius)
 import           Yesod.Core                 (GHandler, GWidget,
                                              RenderRoute (..), RepJson, Yesod,
-                                             YesodDispatch (..),
+                                             YesodDispatch (..), addScript,
                                              addScriptEither, getUrlRender,
                                              getYesod, lift, lookupPostParam,
                                              mkYesodSub, parseRoutes,
@@ -108,6 +114,7 @@ import           Yesod.Core                 (GHandler, GWidget,
 import           Yesod.Form.Jquery          (YesodJquery (..))
 import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
+import           Yesod.Static
 
 -- | Type class for applications using Fay.
 --
@@ -165,6 +172,18 @@ type CommandHandler sub master
       (forall a. Show a => Returns a -> a -> GHandler sub master s)
    -> YesodFayCommand master
    -> GHandler sub master s
+
+-- | A setttings data type for indicating whether the generated Javascript
+-- should contain a copy of the Fay runtime or not.
+data YesodFaySettings = YesodFaySettings
+    { yfsModuleName      :: String
+    , yfsSeparateRuntime :: Maybe (FilePath, Exp) }
+
+yesodFaySettings :: String -> YesodFaySettings
+yesodFaySettings moduleName = YesodFaySettings moduleName Nothing
+
+updateRuntime :: FilePath -> IO ()
+updateRuntime fp = getRuntime >>= \js -> copyFile js fp
 
 -- | The Fay subsite.
 data FaySite = FaySite
@@ -230,6 +249,16 @@ requireJQuery = do
 mkfp :: String -> FilePath
 mkfp name = "fay/" ++ name ++ ".hs"
 
+requireFayRuntime :: YesodFaySettings -> Q Exp
+requireFayRuntime settings = do
+    maybe (return ())
+        (\(path,_) -> qRunIO $ updateRuntime (path ++ "/fay-runtime.js"))
+        (yfsSeparateRuntime settings)
+    case yfsSeparateRuntime settings of
+        Nothing -> [| return () |]
+        Just (_,exp) ->
+            [| addScript ($(return exp) (StaticRoute ["fay-runtime.js"] [])) |]
+
 -- | A function that takes a String giving the Fay module name, and returns an
 -- TH splice that generates a @Widget@.
 type FayFile = String -> Q Exp
@@ -237,27 +266,37 @@ type FayFile = String -> Q Exp
 -- | Does a full compile of the Fay code via GHC for type checking, and then
 -- embeds the Fay-generated Javascript as a static string. File changes during
 -- runtime will not be reflected.
-fayFileProd :: FayFile
-fayFileProd name = do
+fayFileProd :: YesodFaySettings -> Q Exp
+fayFileProd settings = do
     qAddDependentFile fp
     qRunIO writeYesodFay
-    eres <- qRunIO $ compileFile config fp
+    eres <- qRunIO $ compileFile config { configExportRuntime = exportRuntime } fp
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
-        Right s -> [|requireJQuery >> toWidget (const $ Javascript $ fromText $ pack s)|]
+        Right s -> [|requireJQuery >> $(requireFayRuntime settings)
+                     >> toWidget (const $ Javascript $ fromText $ pack s)|]
   where
+    name = yfsModuleName settings
+    exportRuntime = isNothing (yfsSeparateRuntime settings)
     fp = mkfp name
 
 config :: CompileConfig
-config = addConfigDirectoryIncludes ["fay", "fay-shared"] def
+config = addConfigDirectoryIncludes [(Nothing, "fay"), (Nothing, "fay-shared")] def
 
 -- | Performs no type checking on the Fay code. Each time the widget is
 -- requested, the Fay code will be compiled from scratch to Javascript.
-fayFileReload :: FayFile
-fayFileReload name = do
-  qRunIO writeYesodFay
-  [|
-    liftIO (compileFile config { configTypecheck = False } $ mkfp name) >>= \eres ->
-    (case eres of
-        Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
-        Right s -> requireJQuery >> toWidget (const $ Javascript $ fromText $ pack s))|]
+fayFileReload :: YesodFaySettings -> Q Exp
+fayFileReload settings = do
+    qRunIO writeYesodFay
+    [|
+        liftIO (compileFile config
+                { configTypecheck = False
+                , configExportRuntime = exportRuntime }
+                $ mkfp name) >>= \eres -> do
+        (case eres of
+              Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
+              Right s -> requireJQuery >> $(requireFayRuntime settings)
+                         >> toWidget (const $ Javascript $ fromText $ pack s))|]
+  where
+    name = yfsModuleName settings
+    exportRuntime = isNothing (yfsSeparateRuntime settings)
