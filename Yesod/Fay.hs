@@ -113,7 +113,6 @@ import           Yesod.Core                 (GHandler, GWidget,
                                              getYesod, lift, lookupPostParam,
                                              mkYesodSub, parseRoutes,
                                              toMasterHandler, toWidget)
-import           Yesod.Fay.Internal         (removeCPP)
 import           Yesod.Form.Jquery          (YesodJquery (..))
 import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
@@ -220,7 +219,7 @@ postFayCommandR =
         go Returns = jsonToRepJson . showToFay
 
 langYesodFay :: String
-langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack . removeCPP) $ readTextFile "Language/Fay/Yesod.hs")
+langYesodFay = $(qRunIO $ fmap (LitE . StringL . unpack) $ readTextFile "Language/Fay/Yesod.hs")
 
 writeYesodFay :: IO ()
 writeYesodFay = do
