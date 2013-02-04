@@ -173,10 +173,12 @@ type CommandHandler sub master
 -- should contain a copy of the Fay runtime or not.
 data YesodFaySettings = YesodFaySettings
     { yfsModuleName      :: String
-    , yfsSeparateRuntime :: Maybe (FilePath, Exp) }
+    , yfsSeparateRuntime :: Maybe (FilePath, Exp)
+    , yfsPostProcess     :: String -> IO String
+    }
 
 yesodFaySettings :: String -> YesodFaySettings
-yesodFaySettings moduleName = YesodFaySettings moduleName Nothing
+yesodFaySettings moduleName = YesodFaySettings moduleName Nothing return
 
 updateRuntime :: FilePath -> IO ()
 updateRuntime fp = getRuntime >>= \js -> copyFile js fp
@@ -272,8 +274,10 @@ fayFileProd settings = do
         } fp
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
-        Right s -> [|requireJQuery >> $(requireFayRuntime settings)
-                     >> toWidget (const $ Javascript $ fromText (pack s) <> jsMainCall (not exportRuntime) name)|]
+        Right s -> do
+            s' <- qRunIO $ yfsPostProcess settings s
+            [|requireJQuery >> $(requireFayRuntime settings)
+                     >> toWidget (const $ Javascript $ fromText (pack s') <> jsMainCall (not exportRuntime) name)|]
   where
     name = yfsModuleName settings
     exportRuntime = isNothing (yfsSeparateRuntime settings)

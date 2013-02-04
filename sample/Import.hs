@@ -3,6 +3,7 @@ module Import where
 
 import Yesod.Fay
 import Language.Haskell.TH.Syntax (Exp)
+import System.Process (readProcess)
 
 -- | In a standard scaffolded site, @development@ is provided by
 -- @Settings.Development@.
@@ -19,4 +20,6 @@ fayFile' staticR moduleName
     | otherwise   = fayFileProd settings
   where
     settings = (yesodFaySettings moduleName)
-        { yfsSeparateRuntime = Just ("static", staticR) }
+        { yfsSeparateRuntime = Just ("static", staticR)
+        , yfsPostProcess = readProcess "java" ["-jar", "closure-compiler.jar"]
+        }
