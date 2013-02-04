@@ -6,7 +6,7 @@
 -- This module must be valid for both GHC and Fay.
 module Language.Fay.Yesod where
 
-import           FFI
+import           Language.Fay.FFI
 import           Prelude
 import           Data.Data
 
