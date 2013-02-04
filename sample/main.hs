@@ -14,14 +14,20 @@ module Main where
 
 import Yesod
 import Yesod.Fay
+import Yesod.Static
 import SharedTypes
 import Import
+import Language.Fay.Convert (readFromFay)
+import Language.Haskell.TH
 
 data App = App
+    { getStatic :: Static
+    }
 
 mkYesod "App" [parseRoutes|
 / HomeR GET
 /fay-command FaySiteR FaySite getFaySite
+/static StaticR Static getStatic
 |]
 
 instance Yesod App
@@ -30,11 +36,10 @@ instance YesodJquery App
 -- Important! This declaration must come after mkYesod so that the FaySiteR
 -- constructor is in scope.
 instance YesodFay App where
-    type YesodFayCommand App = Command
-
     yesodFayCommand render command =
-        case command of
-            RollDie r -> render r "Four" -- guaranteed to be random, see http://xkcd.com/221/
+        case readFromFay command of
+            Just (RollDie r) -> render r "Four" -- guaranteed to be random, see http://xkcd.com/221/
+            Nothing -> invalidArgs ["Invalid command"]
 
     fayRoute = FaySiteR
 
@@ -42,7 +47,7 @@ getHomeR :: Handler RepHtml
 getHomeR = defaultLayout $ do
     setTitle "Fay Sample"
     [whamlet|<button #roll>Roll die|]
-    $(fayFile "Home")
+    $(fayFile' (ConE 'StaticR) "Home")
 
 main :: IO ()
-main = warpDebug 3000 App
+main = static "static" >>= warpDebug 3001 . App

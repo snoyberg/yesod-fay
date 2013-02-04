@@ -1,13 +1,15 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE NoImplicitPrelude  #-}
 {-# LANGUAGE CPP                #-}
 -- | Module to be shared between server and client.
 --
 -- This module must be valid for both GHC and Fay.
 module Language.Fay.Yesod where
 
+#ifdef FAY
+import           FFI
+#else
 import           Language.Fay.FFI
-import           Prelude
+#endif
 import           Data.Data
 
 #ifdef FAY

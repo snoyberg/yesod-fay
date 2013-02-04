@@ -82,10 +82,11 @@ import qualified Data.ByteString.Lazy       as L
 import           Data.Data                  (Data)
 import           Data.Default               (def)
 import           Data.Maybe                 (isNothing)
+import           Data.Monoid                ((<>), mempty)
 import           Data.Text                  (pack, unpack)
 import qualified Data.Text                  as T
 import           Data.Text.Encoding         (encodeUtf8)
-import           Data.Text.Lazy.Builder     (fromText, toLazyText)
+import           Data.Text.Lazy.Builder     (fromText, toLazyText, Builder)
 import           Filesystem                 (createTree, isFile, readTextFile)
 import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>))
 import           Language.Fay               (compileFile, getRuntime)
@@ -95,7 +96,8 @@ import           Language.Fay.Types         (CompileConfig,
                                              configDirectoryIncludes,
                                              addConfigDirectoryIncludes,
                                              configTypecheck,
-                                             configExportRuntime)
+                                             configExportRuntime,
+                                             configNaked)
 import           Language.Fay.Yesod         (Returns (Returns))
 import           Language.Haskell.TH.Syntax (Exp (LitE), Lit (StringL),
                                              Pred (ClassP), Q, Type (VarT),
@@ -116,6 +118,13 @@ import           Yesod.Form.Jquery          (YesodJquery (..))
 import           Yesod.Handler              (invalidArgs)
 import           Yesod.Json                 (jsonToRepJson)
 import           Yesod.Static
+
+jsMainCall :: Bool -> String -> Builder
+jsMainCall False _ = mempty
+jsMainCall True mn' =
+    "Fay$$_(" <> mn <> "$main);"
+  where
+    mn = fromText $ T.pack mn'
 
 -- | Type class for applications using Fay.
 --
@@ -258,11 +267,14 @@ fayFileProd :: YesodFaySettings -> Q Exp
 fayFileProd settings = do
     qAddDependentFile fp
     qRunIO writeYesodFay
-    eres <- qRunIO $ compileFile config { configExportRuntime = exportRuntime } fp
+    eres <- qRunIO $ compileFile config
+        { configExportRuntime = exportRuntime
+        , configNaked = not exportRuntime
+        } fp
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
         Right s -> [|requireJQuery >> $(requireFayRuntime settings)
-                     >> toWidget (const $ Javascript $ fromText $ pack s)|]
+                     >> toWidget (const $ Javascript $ fromText (pack s) <> jsMainCall (not exportRuntime) name)|]
   where
     name = yfsModuleName settings
     exportRuntime = isNothing (yfsSeparateRuntime settings)
@@ -279,12 +291,14 @@ fayFileReload settings = do
     [|
         liftIO (compileFile config
                 { configTypecheck = False
-                , configExportRuntime = exportRuntime }
+                , configExportRuntime = exportRuntime
+                , configNaked = not exportRuntime
+                }
                 $ mkfp name) >>= \eres -> do
         (case eres of
               Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
               Right s -> requireJQuery >> $(requireFayRuntime settings)
-                         >> toWidget (const $ Javascript $ fromText $ pack s))|]
+                         >> toWidget (const $ Javascript $ fromText (pack s) <> jsMainCall (not exportRuntime) name))|]
   where
     name = yfsModuleName settings
     exportRuntime = isNothing (yfsSeparateRuntime settings)
