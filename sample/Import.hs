@@ -21,5 +21,6 @@ fayFile' staticR moduleName
   where
     settings = (yesodFaySettings moduleName)
         { yfsSeparateRuntime = Just ("static", staticR)
-        , yfsPostProcess = readProcess "java" ["-jar", "closure-compiler.jar"]
+        -- , yfsPostProcess = readProcess "java" ["-jar", "closure-compiler.jar"]
+        , yfsExternal = Just ("static", staticR)
         }

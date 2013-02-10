@@ -85,10 +85,12 @@ import           Data.Maybe                 (isNothing)
 import           Data.Monoid                ((<>), mempty)
 import           Data.Text                  (pack, unpack)
 import qualified Data.Text                  as T
+import qualified Data.Text.Lazy             as TL
 import           Data.Text.Encoding         (encodeUtf8)
+import qualified Data.Text.Lazy.Encoding as TLE
 import           Data.Text.Lazy.Builder     (fromText, toLazyText, Builder)
 import           Filesystem                 (createTree, isFile, readTextFile)
-import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>))
+import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>), decodeString)
 import           Language.Fay               (compileFile, getRuntime)
 import           Language.Fay.Convert       (readFromFay, showToFay)
 import           Language.Fay.FFI           (Foreign)
@@ -175,13 +177,14 @@ data YesodFaySettings = YesodFaySettings
     { yfsModuleName      :: String
     , yfsSeparateRuntime :: Maybe (FilePath, Exp)
     , yfsPostProcess     :: String -> IO String
+    , yfsExternal        :: Maybe (FilePath, Exp)
     }
 
 yesodFaySettings :: String -> YesodFaySettings
-yesodFaySettings moduleName = YesodFaySettings moduleName Nothing return
+yesodFaySettings moduleName = YesodFaySettings moduleName Nothing return Nothing
 
 updateRuntime :: FilePath -> IO ()
-updateRuntime fp = getRuntime >>= \js -> copyFile js fp
+updateRuntime fp = getRuntime >>= \js -> createTree (directory $ decodeString fp) >> copyFile js fp
 
 -- | The Fay subsite.
 data FaySite = FaySite
@@ -254,8 +257,9 @@ requireFayRuntime settings = do
         (yfsSeparateRuntime settings)
     case yfsSeparateRuntime settings of
         Nothing -> [| return () |]
-        Just (_,exp) ->
-            [| addScript ($(return exp) (StaticRoute ["fay-runtime.js"] [])) |]
+        Just (_,exp) -> do
+            hash <- qRunIO $ getRuntime >>= fmap base64md5 . L.readFile
+            [| addScript ($(return exp) (StaticRoute ["fay-runtime.js"] [(T.pack hash, "")])) |]
 
 -- | A function that takes a String giving the Fay module name, and returns an
 -- TH splice that generates a @Widget@.
@@ -276,8 +280,25 @@ fayFileProd settings = do
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
         Right s -> do
             s' <- qRunIO $ yfsPostProcess settings s
-            [|requireJQuery >> $(requireFayRuntime settings)
-                     >> toWidget (const $ Javascript $ fromText (pack s') <> jsMainCall (not exportRuntime) name)|]
+            let contents = fromText (pack s') <> jsMainCall (not exportRuntime) name
+            external <-
+                case yfsExternal settings of
+                    Nothing -> return [|Nothing|]
+                    Just (fp, exp) -> do
+                        let name = concat ["faygen-", hash, ".js"]
+                            hash = base64md5 contents'
+                            contents' = TLE.encodeUtf8 $ toLazyText contents
+                        qRunIO $ L.writeFile (concat [fp, "/", name]) contents'
+                        return [| Just ($(return exp), name) |]
+
+            [| do
+                requireJQuery
+                $(requireFayRuntime settings)
+                case $external of
+                    Nothing -> toWidget $ const $ Javascript $ fromText $ pack
+                               $(return $ LitE $ StringL $ TL.unpack $ toLazyText contents)
+                    Just (constructor, name) -> addScript $ constructor $ StaticRoute [name] []
+                |]
   where
     name = yfsModuleName settings
     exportRuntime = isNothing (yfsSeparateRuntime settings)
