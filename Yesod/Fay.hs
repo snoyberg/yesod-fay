@@ -91,12 +91,10 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import           Data.Text.Lazy.Builder     (fromText, toLazyText, Builder)
 import           Filesystem                 (createTree, isFile, readTextFile)
 import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>), decodeString)
-import           Language.Fay               (compileFile, getRuntime)
-import           Language.Fay.Convert       (readFromFay, showToFay)
-import           Language.Fay.FFI           (Foreign)
-import           Language.Fay.Types         (CompileConfig,
+import           Fay                        (compileFile, getRuntime)
+import           Fay.Convert                (readFromFay, showToFay)
+import           Fay.Types                  (CompileConfig,
                                              configDirectoryIncludes,
-                                             addConfigDirectoryIncludes,
                                              configTypecheck,
                                              configExportRuntime,
                                              configNaked)
@@ -305,7 +303,12 @@ fayFileProd settings = do
     fp = mkfp name
 
 config :: CompileConfig
-config = addConfigDirectoryIncludes [(Nothing, "fay"), (Nothing, "fay-shared")] def
+config = def
+    { configDirectoryIncludes
+        = (Nothing, "fay")
+        : (Nothing, "fay-shared")
+        : configDirectoryIncludes def
+    }
 
 -- | Performs no type checking on the Fay code. Each time the widget is
 -- requested, the Fay code will be compiled from scratch to Javascript.

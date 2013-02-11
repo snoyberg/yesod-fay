@@ -30,7 +30,6 @@ toString = ffi "%1"
 import qualified Data.Text as T
 
 type Text = T.Text
-instance Foreign T.Text
 
 fromString :: String -> Text
 fromString = T.pack
