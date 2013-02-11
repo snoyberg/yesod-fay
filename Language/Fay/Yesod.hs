@@ -17,7 +17,6 @@ import           Data.Data
 
 data Text = Text
     deriving (Show, Read, Eq, Typeable, Data)
-instance Foreign Text
 
 fromString :: String -> Text
 fromString = ffi "%1"
