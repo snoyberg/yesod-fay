@@ -17,7 +17,7 @@ import Yesod.Fay
 import Yesod.Static
 import SharedTypes
 import Import
-import Language.Fay.Convert (readFromFay)
+import Fay.Convert (readFromFay)
 import Language.Haskell.TH
 
 data App = App
