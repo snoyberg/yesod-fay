@@ -12,4 +12,3 @@ import Language.Fay.FFI
 
 data Command = RollDie (Returns Text)
     deriving (Read, Typeable, Data)
-instance Foreign Command
