@@ -176,10 +176,11 @@ data YesodFaySettings = YesodFaySettings
     , yfsSeparateRuntime :: Maybe (FilePath, Exp)
     , yfsPostProcess     :: String -> IO String
     , yfsExternal        :: Maybe (FilePath, Exp)
+    , yfsRequireJQuery   :: Bool
     }
 
 yesodFaySettings :: String -> YesodFaySettings
-yesodFaySettings moduleName = YesodFaySettings moduleName Nothing return Nothing
+yesodFaySettings moduleName = YesodFaySettings moduleName Nothing return Nothing True
 
 updateRuntime :: FilePath -> IO ()
 updateRuntime fp = getRuntime >>= \js -> createTree (directory $ decodeString fp) >> copyFile js fp
@@ -237,6 +238,9 @@ writeYesodFay = do
         createTree $ directory fp
         writeFile (encodeString fp) content
 
+maybeRequireJQuery :: YesodFay master => Bool -> GWidget sub master ()
+maybeRequireJQuery needJQuery = when needJQuery requireJQuery
+
 requireJQuery :: YesodFay master => GWidget sub master ()
 requireJQuery = do
     master <- lift getYesod
@@ -268,6 +272,7 @@ type FayFile = String -> Q Exp
 -- runtime will not be reflected.
 fayFileProd :: YesodFaySettings -> Q Exp
 fayFileProd settings = do
+    let needJQuery = yfsRequireJQuery settings
     qAddDependentFile fp
     qRunIO writeYesodFay
     eres <- qRunIO $ compileFile config
@@ -290,7 +295,7 @@ fayFileProd settings = do
                         return [| Just ($(return exp), name) |]
 
             [| do
-                requireJQuery
+                maybeRequireJQuery needJQuery
                 $(requireFayRuntime settings)
                 case $external of
                     Nothing -> toWidget $ const $ Javascript $ fromText $ pack
@@ -314,6 +319,7 @@ config = def
 -- requested, the Fay code will be compiled from scratch to Javascript.
 fayFileReload :: YesodFaySettings -> Q Exp
 fayFileReload settings = do
+    let needJQuery = yfsRequireJQuery settings
     qRunIO writeYesodFay
     [|
         liftIO (compileFile config
@@ -324,8 +330,10 @@ fayFileReload settings = do
                 $ mkfp name) >>= \eres -> do
         (case eres of
               Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
-              Right s -> requireJQuery >> $(requireFayRuntime settings)
-                         >> toWidget (const $ Javascript $ fromText (pack s) <> jsMainCall (not exportRuntime) name))|]
+              Right s -> do
+                maybeRequireJQuery needJQuery
+                $(requireFayRuntime settings)
+                toWidget (const $ Javascript $ fromText (pack s) <> jsMainCall (not exportRuntime) name))|]
   where
     name = yfsModuleName settings
     exportRuntime = isNothing (yfsSeparateRuntime settings)
