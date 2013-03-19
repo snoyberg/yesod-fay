@@ -178,6 +178,9 @@ data YesodFaySettings = YesodFaySettings
     , yfsPostProcess     :: String -> IO String
     , yfsExternal        :: Maybe (FilePath, Exp)
     , yfsRequireJQuery   :: Bool
+    -- ^ Note that the server call functions provided for your Fay code require
+    -- jQuery to be present. If you disable this option and still use the
+    -- provided server call functions, your code will break.
     }
 
 yesodFaySettings :: String -> YesodFaySettings
