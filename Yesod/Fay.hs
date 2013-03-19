@@ -93,7 +93,7 @@ import           Filesystem                 (createTree, isFile, readTextFile)
 import           Filesystem.Path.CurrentOS  (directory, encodeString, (</>), decodeString)
 import           Fay                        (compileFile, getRuntime)
 import           Fay.Convert                (readFromFay, showToFay)
-import           Fay.Types                  (CompileConfig,
+import           Fay.Types                  (CompileConfig(..),
                                              configDirectoryIncludes,
                                              configTypecheck,
                                              configExportRuntime,
@@ -102,6 +102,7 @@ import           Language.Fay.Yesod         (Returns (Returns))
 import           Language.Haskell.TH.Syntax (Exp (LitE), Lit (StringL),
                                              Pred (ClassP), Q, Type (VarT),
                                              mkName, qAddDependentFile, qRunIO)
+import           System.Environment         (getEnvironment)
 import           System.Directory           (copyFile)
 import           System.Exit                (ExitCode (ExitSuccess))
 import           System.Process             (rawSystem)
@@ -267,6 +268,13 @@ requireFayRuntime settings = do
 -- TH splice that generates a @Widget@.
 type FayFile = String -> Q Exp
 
+compileFayFile fp conf = qRunIO $ do
+    packageConf <- fmap (lookup "HASKELL_PACKAGE_SANDBOX") getEnvironment
+    -- Just "cabal-dev/packages-7.4.1.conf"
+    compileFile conf {
+        configPackageConf = packageConf
+      } fp
+
 -- | Does a full compile of the Fay code via GHC for type checking, and then
 -- embeds the Fay-generated Javascript as a static string. File changes during
 -- runtime will not be reflected.
@@ -275,10 +283,10 @@ fayFileProd settings = do
     let needJQuery = yfsRequireJQuery settings
     qAddDependentFile fp
     qRunIO writeYesodFay
-    eres <- qRunIO $ compileFile config
+    eres <- compileFayFile fp config
         { configExportRuntime = exportRuntime
         , configNaked = not exportRuntime
-        } fp
+        }
     case eres of
         Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
         Right s -> do
@@ -308,8 +316,8 @@ fayFileProd settings = do
     fp = mkfp name
 
 config :: CompileConfig
-config = def
-    { configDirectoryIncludes
+config = def { 
+      configDirectoryIncludes
         = (Nothing, "fay")
         : (Nothing, "fay-shared")
         : configDirectoryIncludes def
@@ -322,12 +330,12 @@ fayFileReload settings = do
     let needJQuery = yfsRequireJQuery settings
     qRunIO writeYesodFay
     [|
-        liftIO (compileFile config
+        liftIO (compileFayFile (mkfp name) config
                 { configTypecheck = False
                 , configExportRuntime = exportRuntime
                 , configNaked = not exportRuntime
-                }
-                $ mkfp name) >>= \eres -> do
+                })
+                >>= \eres -> do
         (case eres of
               Left e -> error $ "Unable to compile Fay module \"" ++ name ++ "\": " ++ show e
               Right s -> do
