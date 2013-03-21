@@ -1,10 +1,5 @@
-yesod-fay
-=========
-
-Utilities for using the Fay Haskell-to-JS compiler with Yesod.
+Note: this repository is no longer active. Instead, users should use the fork
+maintained by fpco, which is more up-to-date:
 
 
-Usage with cabal-dev
---------------------
-
-set the HASKELL_PACKAGE_SANDBOX environment variable (for example, to cabal-dev/packages-7.4.1.conf/) 
+https://github.com/fpco/yesod-fay
